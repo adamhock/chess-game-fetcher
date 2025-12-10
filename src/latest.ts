@@ -1,10 +1,18 @@
 // src/latestGame.ts
 import fetch from "node-fetch";
-import { analyze } from "./analyze.js";
 
-type Archives = {
-  archives: string[];
+type LatestDetails = {
+  rating: number;
 }
+
+type ProfileDetails = {
+  last: LatestDetails;
+}
+
+type ChessComProfile = {
+  chess_blitz: ProfileDetails;
+};
+
 type ChessComGame = {
   url: string;
   white?: string;
@@ -25,33 +33,25 @@ function isGamesResponse(obj: unknown): obj is GamesResponse {
   return Array.isArray(maybe.games);
 }
 
-const username = "ahock1620"; // <-- change this
+const username = "ahock1620";
+
+async function getRating() {
+  console.log("Getting Rating...");
+  const url = `https://api.chess.com/pub/player/${username}/stats`;
+
+  const res = await fetch(url);
+
+  const profile = await res.json() as ChessComProfile;
+
+  console.log("Your blitz rating is " + profile.chess_blitz.last.rating)
+  return profile.chess_blitz.last.rating;
+}
 
 async function getLatestGame() {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
-
-
-
-  // const archivesUrl = `https://api.chess.com/pub/player/${username}/games/archives`;
-
-  // const archivesRes = await fetch(archivesUrl);
-
-  // if (!archivesRes.ok) {
-  //   throw new Error(`Chess.com API returned ${archivesRes.status} ${archivesRes.statusText}`);
-  // }
-
-  // const archives = (await archivesRes.json() as Archives).archives;
-
-  // if (archives.length == 0) {
-  //   throw new Error(`archives list returned empty`);
-  // }
-
-  // const url = archives[archives.length-1];
-
-  const url = `https://api.chess.com/pub/player/${username}/games/${year}/${month}`
-  console.log ("this is the url " +  url);
+  const url = `https://api.chess.com/pub/player/${username}/games/${year}/${month}`;
 
   const res = await fetch(url);
 
@@ -59,7 +59,7 @@ async function getLatestGame() {
     throw new Error(`Chess.com API returned ${res.status} ${res.statusText}`);
   }
 
-  const raw = await res.json(); // raw is `unknown` type
+  const raw = await res.json();
 
   if (!isGamesResponse(raw)) {
     throw new Error("Unexpected response shape from Chess.com API");
@@ -68,7 +68,7 @@ async function getLatestGame() {
   const games = raw.games;
   if (!games.length) {
     console.log("No games found for this month.");
-    return;
+    return "";
   }
 
   const latest = games[games.length - 1];
@@ -80,11 +80,22 @@ async function getLatestGame() {
     pgn: latest.pgn?.slice(0, 500) ?? "(no pgn)"
   });
 
-  return analyze(latest.pgn!);
+  if (!latest.pgn) {
+    throw new Error("Unexpected response shape from Chess.com API");
+  }
+
+  return latest.pgn;
+}
+
+export async function getLatestDetails() {
+  const latestPgn = await getLatestGame();
+  const rating = await getRating();
+  console.log('test');
+  return {latestPgn, rating};
 }
 
 // Run and catch errors so the program doesn't crash silently
-getLatestGame().catch(err => {
+getLatestDetails().catch(err => {
   console.error("Error fetching latest game:", err);
   process.exitCode = 1;
 });

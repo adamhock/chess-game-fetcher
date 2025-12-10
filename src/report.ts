@@ -59,7 +59,7 @@ function performanceLabel(diff: number): string {
   return "Terrible";
 }
 
-function verbalSummaryForHome(label: string, diff: number): string {
+function verbalSummaryForHome(label: string, diff: number, accuracy: number): string {
   const absDiff = Math.abs(diff).toFixed(1);
   let diffText: string;
 
@@ -72,21 +72,21 @@ function verbalSummaryForHome(label: string, diff: number): string {
   // Conversational phrasing for Google Home Mini
   switch (label) {
     case "Excellent":
-      return `Amazing! You played an excellent game. Your accuracy was ${diffText}.`;
+      return `Amazing! You played an excellent game. Your accuracy was ${accuracy}, which is ${diffText}.`;
     case "Great":
-      return `Great job! You played a great game. Your accuracy was ${diffText}.`;
+      return `Great job! You played a great game. Your accuracy was ${accuracy}, which is ${diffText}.`;
     case "Good":
-      return `Nice work! You played a good game. Your accuracy was ${diffText}.`;
+      return `Nice work! You played a good game. Your accuracy was ${accuracy}, which is ${diffText}.`;
     case "Fair":
-      return `You played a fair game. Your accuracy was ${diffText}.`;
+      return `You played a fair game. Your accuracy was ${accuracy}, which is ${diffText}.`;
     case "Bad":
-      return `Hmm, you played a bad game. Your accuracy was ${diffText}.`;
+      return `Hmm, you played a bad game. Your accuracy was ${accuracy}, which is ${diffText}.`;
     case "Awful":
-      return `Ouch, that was an awful game. Your accuracy was ${diffText}.`;
+      return `Ouch, that was an awful game. Your accuracy was ${accuracy}, which is ${diffText}.`;
     case "Terrible":
-      return `Yikes! You played a terrible game. Your accuracy was ${diffText}.`;
+      return `Yikes! You played a terrible game. Your accuracy was ${accuracy}, which is ${diffText}.`;
     default:
-      return `Your game performance was ${label}. Your accuracy was ${diffText}.`;
+      return `Your game performance was ${label}. Your accuracy was ${accuracy}, which is ${diffText}.`;
   }
 }
 
@@ -94,10 +94,11 @@ function verbalSummaryForHome(label: string, diff: number): string {
 /**
  * Evaluate game relative to personal history
  */
-export function evaluateGamePersonal(
+export function generateReport(
   accuracy: number,
   rating: number
 ): string {
+  console.log("Generating report...");
   const history = loadHistory();
 
   // Append new game
@@ -119,5 +120,5 @@ export function evaluateGamePersonal(
   const diff = accuracy - meanAccuracy;
   const label = performanceLabel(diff);
 
-  return verbalSummaryForHome(label, diff)
+  return verbalSummaryForHome(label, diff, accuracy)
 }

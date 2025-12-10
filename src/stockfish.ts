@@ -3,13 +3,12 @@ import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 import fs from "fs";
 import path from "path";
 import { Chess } from "chess.js";
-import { evaluateGamePersonal } from "./evaluateGame.js";
+import { generateReport } from "./report.js";
 
 /**
  * Config
  */
 const STOCKFISH_CMD = "C:\\stockfish\\stockfish.exe"; // or full path e.g. "/usr/local/bin/stockfish" or "stockfish.exe"
-const DEFAULT_DEPTH = 18; // increase for better quality (but slower)
 
 /**
  * Utility: run UCI command and capture info
@@ -99,7 +98,7 @@ function parseScoreFromInfoLine(line: string): number | null {
  * Evaluate a FEN position at given depth. Returns centipawn eval from White's perspective.
  * This positions the engine and runs `go depth`.
  */
-async function evalPosition(engine: UciEngine, fen: string, depth = DEFAULT_DEPTH): Promise<number> {
+async function evalPosition(engine: UciEngine, fen: string, depth: number): Promise<number> {
   // Position
   engine.send(`position fen ${fen}`);
   // Clear previous search state; ask for search to depth
@@ -136,7 +135,8 @@ async function evalPosition(engine: UciEngine, fen: string, depth = DEFAULT_DEPT
 /**
  * Compute accuracy from PGN using per-move centipawn loss mapping.
  */
-async function computeAccuracyFromPgn(pgn: string, depth = DEFAULT_DEPTH) {
+export async function analyze(pgn: string, depth: number) {
+  console.log("starting analysis");
   const chess = new Chess();
   chess.loadPgn(pgn, { strict: false });
 
@@ -224,13 +224,13 @@ async function computeAccuracyFromPgn(pgn: string, depth = DEFAULT_DEPTH) {
   await engine.quit();
 
   if (!moveScores.length) {
-    return { accuracy: 0, moveScores: [] };
+    return 0;
   }
 
   const avg = moveScores.reduce((s, m) => s + m.score, 0) / moveScores.length;
   const accuracyPct = avg * 100;
 
-  return { accuracy: accuracyPct, moveScores };
+  return accuracyPct;
 }
 
 /**
@@ -244,29 +244,4 @@ function cplToMoveScore(cpl: number): number {
   if (cpl <= 100) return 0.60;
   if (cpl <= 200) return 0.30;
   return 0.10;
-}
-
-/**
- * Example runner: read a PGN file and analyze accuracy
- */
-export async function analyze(pgn: string) {
-  // const pgnPath = process.argv[2] || path.join(process.cwd(), "latest.pgn");
-  // if (!fs.existsSync(pgnPath)) {
-  //   console.error("PGN file not found:", pgnPath);
-  //   console.error("Usage: node dist/analyze.js /path/to/game.pgn");
-  //   process.exit(2);
-  // }
-
-  // console.log("Analyzing PGN:", pgnPath);
-
-  try {
-    const { accuracy, moveScores } = await computeAccuracyFromPgn(pgn, DEFAULT_DEPTH);
-    console.log("\n=== RESULT ===");
-    console.log(`Estimated Accuracy: ${accuracy.toFixed(2)}%`);
-    console.log(evaluateGamePersonal(accuracy, 1000));
-
-  } catch (err) {
-    console.error("Error during analysis:", err);
-    process.exitCode = 1;
-  }
 }
